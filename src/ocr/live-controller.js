@@ -144,20 +144,12 @@ export class LiveOCRController {
         // 安定検知用の現フレームをキャプチャ
         const currentCanvas = this._captureROI();
 
-        // 安定検知（閾値を緩めに設定、かつ3回連続不安定でも強制実行）
+        // 安定検知（ほぼ無効：極端なブレのみスキップ）
         if (this._prevCanvas) {
-            const stable = isFrameStable(this._prevCanvas, currentCanvas, 0.30);
+            const stable = isFrameStable(this._prevCanvas, currentCanvas, 0.95);
             if (!stable) {
-                this._unstableCount++;
-                // 3回連続不安定でも強制的にOCR実行
-                if (this._unstableCount < 3) {
-                    this._setStatus('unstable');
-                    this._prevCanvas = currentCanvas;
-                    return;
-                }
-                this._unstableCount = 0;
-            } else {
-                this._unstableCount = 0;
+                this._prevCanvas = currentCanvas;
+                // それでもOCRは実行する（スキップしない）
             }
         }
         this._prevCanvas = currentCanvas;
