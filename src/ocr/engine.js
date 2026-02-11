@@ -21,39 +21,41 @@ export async function initOCR(onProgress) {
         worker = await initPromise;
         return worker;
     } catch (err) {
-        console.error('OCR init failed:', err);
-        throw err;
-    } finally {
         isInitializing = false;
+        initPromise = null;
+        throw err;
     }
 }
 
 async function _createWorker(onProgress) {
-    // グローバルに読み込まれた Tesseract を使用
+    // Tesseract.js がグローバルに読み込まれているか確認
     if (typeof Tesseract === 'undefined') {
-        throw new Error('Tesseract.js が読み込まれていません');
+        throw new Error('Tesseract.js が読み込まれていません。ネットワーク接続を確認してください。');
     }
 
-    const w = await Tesseract.createWorker('eng+jpn', 1, {
+    // 数字・英語のみ（価格や容量の読み取りに十分）
+    const w = await Tesseract.createWorker('eng', 1, {
         logger: (info) => {
             if (onProgress && info.progress != null) {
                 onProgress(info);
             }
         },
     });
+
+    // 数字・記号中心の認識に最適化
+    await w.setParameters({
+        tessedit_char_whitelist: '0123456789.,¥円gGkKmMlLpPcCxX×個本入袋本体税込抜あたりAbcdefghijklmnopqrstuvwxyz ',
+    });
+
     return w;
 }
 
 /**
  * ROI領域を切り出してOCR実行
- * @param {HTMLVideoElement} video - カメラビデオ要素
- * @param {{ x: number, y: number, width: number, height: number }} roi - ROI矩形（ビデオ座標系）
- * @returns {Promise<string>} OCRテキスト
  */
 export async function recognizeROI(video, roi) {
     if (!worker) throw new Error('OCR not initialized');
 
-    // ROI領域をCanvasに描画
     const canvas = document.createElement('canvas');
     canvas.width = roi.width;
     canvas.height = roi.height;
@@ -65,7 +67,7 @@ export async function recognizeROI(video, roi) {
         0, 0, roi.width, roi.height
     );
 
-    // 前処理（コントラスト強調・グレースケール化）
+    // 前処理
     const imageData = ctx.getImageData(0, 0, roi.width, roi.height);
     preprocessImage(imageData);
     ctx.putImageData(imageData, 0, 0);
@@ -80,9 +82,7 @@ export async function recognizeROI(video, roi) {
 function preprocessImage(imageData) {
     const data = imageData.data;
     for (let i = 0; i < data.length; i += 4) {
-        // グレースケール化
         const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-        // 簡易コントラスト強調
         const enhanced = gray < 128 ? Math.max(0, gray * 0.7) : Math.min(255, gray * 1.3);
         data[i] = data[i + 1] = data[i + 2] = enhanced;
     }
@@ -90,10 +90,6 @@ function preprocessImage(imageData) {
 
 /**
  * 安定検知用ピクセル差分計算
- * @param {HTMLCanvasElement} prevCanvas
- * @param {HTMLCanvasElement} currCanvas
- * @param {number} threshold - 差分率の閾値 (0-1)
- * @returns {boolean} true = 安定
  */
 export function isFrameStable(prevCanvas, currCanvas, threshold = 0.05) {
     if (!prevCanvas || !currCanvas) return true;
@@ -105,7 +101,6 @@ export function isFrameStable(prevCanvas, currCanvas, threshold = 0.05) {
     const prevCtx = prevCanvas.getContext('2d');
     const currCtx = currCanvas.getContext('2d');
 
-    // サンプリング（全ピクセルではなく間引く）
     const sampleSize = 100;
     const stepX = Math.max(1, Math.floor(w / sampleSize));
     const stepY = Math.max(1, Math.floor(h / sampleSize));
@@ -127,8 +122,7 @@ export function isFrameStable(prevCanvas, currCanvas, threshold = 0.05) {
         }
     }
 
-    const diffRatio = diffCount / totalSamples;
-    return diffRatio <= threshold;
+    return (diffCount / totalSamples) <= threshold;
 }
 
 /**

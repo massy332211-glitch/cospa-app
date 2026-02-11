@@ -11,19 +11,19 @@ let ocrController = null;
 let videoStream = null;
 
 const STATUS_LABELS = {
-    idle: '待機中',
-    initializing: 'OCRエンジンを読み込み中…（初回は時間がかかります）',
-    scanning: '🟢 読み取り中…',
-    unstable: '⏸️ 手ブレ検知：安定するまで待機',
-    locked: '✅ ロック中 — [追加]を押してください',
-    error: 'OCRの初期化に失敗しました',
+  idle: '待機中',
+  initializing: 'OCRエンジンを読み込み中…（初回は時間がかかります）',
+  scanning: '🟢 読み取り中…',
+  unstable: '⏸️ 手ブレ検知：安定するまで待機',
+  locked: '✅ ロック中 — [追加]を押してください',
+  error: 'OCRの初期化に失敗しました',
 };
 
 /**
  * スキャン画面を描画
  */
 export function renderScanView(container, { onNavigate }) {
-    container.innerHTML = `
+  container.innerHTML = `
     <div class="scan-view">
       <div class="scan-view__camera-area">
         <video id="camera-video" autoplay playsinline muted></video>
@@ -92,195 +92,213 @@ export function renderScanView(container, { onNavigate }) {
     </div>
   `;
 
-    // 要素取得
-    const video = document.getElementById('camera-video');
-    const statusText = document.getElementById('status-text');
-    const statusDot = container.querySelector('.scan-view__status-dot');
-    const cameraError = document.getElementById('camera-error');
-    const priceChips = document.getElementById('price-chips');
-    const quantityChips = document.getElementById('quantity-chips');
-    const unitPriceSection = document.getElementById('unit-price-section');
-    const unitPriceChips = document.getElementById('unit-price-chips');
-    const btnAdd = document.getElementById('btn-add');
-    const btnReset = document.getElementById('btn-reset');
-    const btnManual = document.getElementById('btn-manual');
-    const btnList = document.getElementById('btn-list');
-    const listBadge = document.getElementById('list-badge');
-    const unlockPrice = document.getElementById('unlock-price');
-    const unlockQuantity = document.getElementById('unlock-quantity');
+  // 要素取得
+  const video = document.getElementById('camera-video');
+  const statusText = document.getElementById('status-text');
+  const statusDot = container.querySelector('.scan-view__status-dot');
+  const cameraError = document.getElementById('camera-error');
+  const priceChips = document.getElementById('price-chips');
+  const quantityChips = document.getElementById('quantity-chips');
+  const unitPriceSection = document.getElementById('unit-price-section');
+  const unitPriceChips = document.getElementById('unit-price-chips');
+  const btnAdd = document.getElementById('btn-add');
+  const btnReset = document.getElementById('btn-reset');
+  const btnManual = document.getElementById('btn-manual');
+  const btnList = document.getElementById('btn-list');
+  const listBadge = document.getElementById('list-badge');
+  const unlockPrice = document.getElementById('unlock-price');
+  const unlockQuantity = document.getElementById('unlock-quantity');
 
-    // バッジ更新
-    function updateBadge() {
-        const count = store.products.length;
-        if (count > 0) {
-            listBadge.style.display = '';
-            listBadge.textContent = count;
-        } else {
-            listBadge.style.display = 'none';
-        }
+  // バッジ更新
+  function updateBadge() {
+    const count = store.products.length;
+    if (count > 0) {
+      listBadge.style.display = '';
+      listBadge.textContent = count;
+    } else {
+      listBadge.style.display = 'none';
     }
-    updateBadge();
-    const unsubStore = store.subscribe(() => updateBadge());
+  }
+  updateBadge();
+  const unsubStore = store.subscribe(() => updateBadge());
 
-    // カメラ起動
-    startCamera(video).then(() => {
-        statusText.textContent = 'カメラ起動完了。OCRを初期化中…';
-        const roi = calcROI(video);
-        ocrController = new LiveOCRController();
-        ocrController.start(video, roi, {
-            onCandidatesUpdate: (data) => updateCandidatesUI(data),
-            onStatusChange: (status) => {
-                statusText.textContent = STATUS_LABELS[status] || status;
-                statusDot.className = `scan-view__status-dot scan-view__status-dot--${status}`;
-            },
-        });
-    }).catch(err => {
-        console.error('Camera error:', err);
-        // カメラ失敗でもアプリは使える（手入力で）
-        cameraError.style.display = 'flex';
-        statusText.textContent = 'カメラを使用できません — 手入力をご利用ください';
-        statusDot.className = 'scan-view__status-dot scan-view__status-dot--error';
-        priceChips.innerHTML = '<span class="scan-view__empty">手入力で商品を追加してください</span>';
-        quantityChips.innerHTML = '<span class="scan-view__empty">手入力で商品を追加してください</span>';
-    });
+  // カメラ起動
+  startCamera(video).then(() => {
+    statusText.textContent = 'カメラ起動完了。OCRを初期化中…';
+    const roi = calcROI(video);
 
-    function updateCandidatesUI(data) {
-        const { priceCandidates, quantityCandidates, unitPriceCandidates, lockedPrice, lockedQuantity } = data;
-
-        // 価格チップ
-        if (priceCandidates.length > 0) {
-            renderChips(priceChips, priceCandidates, 'price', lockedPrice, (c) => {
-                if (ocrController) {
-                    if (lockedPrice && lockedPrice.value === c.value) {
-                        ocrController.unlockPrice();
-                    } else {
-                        ocrController.lockPrice(c);
-                    }
-                }
-            });
-        } else if (!lockedPrice) {
-            priceChips.innerHTML = '<span class="scan-view__empty">候補なし — 手入力をお試しください</span>';
-        }
-
-        // 容量チップ
-        if (quantityCandidates.length > 0) {
-            renderChips(quantityChips, quantityCandidates, 'quantity', lockedQuantity, (c) => {
-                if (ocrController) {
-                    if (lockedQuantity && lockedQuantity.value === c.value) {
-                        ocrController.unlockQuantity();
-                    } else {
-                        ocrController.lockQuantity(c);
-                    }
-                }
-            });
-        } else if (!lockedQuantity) {
-            quantityChips.innerHTML = '<span class="scan-view__empty">候補なし — 手入力をお試しください</span>';
-        }
-
-        // 単価候補
-        if (unitPriceCandidates && unitPriceCandidates.length > 0) {
-            unitPriceSection.style.display = '';
-            unitPriceChips.innerHTML = unitPriceCandidates.map(c =>
-                `<span class="chip chip--unitPrice">${c.label}</span>`
-            ).join('');
-        } else {
-            unitPriceSection.style.display = 'none';
-        }
-
-        // ロック解除ボタン表示
-        unlockPrice.style.display = lockedPrice ? '' : 'none';
-        unlockQuantity.style.display = lockedQuantity ? '' : 'none';
-
-        // 追加ボタン有効化
-        btnAdd.disabled = !(lockedPrice && lockedQuantity);
+    async function startOCR() {
+      if (ocrController) ocrController.stop();
+      ocrController = new LiveOCRController();
+      ocrController.start(video, roi, {
+        onCandidatesUpdate: (data) => updateCandidatesUI(data),
+        onStatusChange: (status, errorDetail) => {
+          if (status === 'error' && errorDetail) {
+            statusText.innerHTML = `❌ ${errorDetail} <button id="btn-retry" style="margin-left:8px;padding:2px 10px;border:1px solid #fff;border-radius:12px;background:none;color:#fff;cursor:pointer;font-size:0.7rem;">リトライ</button>`;
+            statusDot.className = 'scan-view__status-dot scan-view__status-dot--error';
+            const retryBtn = document.getElementById('btn-retry');
+            if (retryBtn) {
+              retryBtn.addEventListener('click', () => {
+                statusText.textContent = 'OCRを再初期化中…';
+                statusDot.className = 'scan-view__status-dot scan-view__status-dot--initializing';
+                startOCR();
+              });
+            }
+          } else {
+            statusText.textContent = STATUS_LABELS[status] || status;
+            statusDot.className = `scan-view__status-dot scan-view__status-dot--${status}`;
+          }
+        },
+      });
     }
 
-    // ロック解除
-    unlockPrice.addEventListener('click', () => {
-        if (ocrController) ocrController.unlockPrice();
-    });
-    unlockQuantity.addEventListener('click', () => {
-        if (ocrController) ocrController.unlockQuantity();
-    });
+    startOCR();
+  }).catch(err => {
+    console.error('Camera error:', err);
+    cameraError.style.display = 'flex';
+    statusText.textContent = 'カメラを使用できません — 手入力をご利用ください';
+    statusDot.className = 'scan-view__status-dot scan-view__status-dot--error';
+    priceChips.innerHTML = '<span class="scan-view__empty">手入力で商品を追加してください</span>';
+    quantityChips.innerHTML = '<span class="scan-view__empty">手入力で商品を追加してください</span>';
+  });
 
-    // 追加
-    btnAdd.addEventListener('click', () => {
-        if (!ocrController || !ocrController.isBothLocked) return;
-        const price = ocrController.lockedPrice;
-        const qty = ocrController.lockedQuantity;
+  function updateCandidatesUI(data) {
+    const { priceCandidates, quantityCandidates, unitPriceCandidates, lockedPrice, lockedQuantity } = data;
 
-        store.addProduct({
-            name: `商品${store.products.length + 1}`,
-            price: price.value,
-            taxType: price.taxType || 'unknown',
-            quantityValue: qty.value,
-            quantityUnit: qty.unit,
-            category: qty.category,
-            countUnitType: qty.countUnitType || null,
-            multiplier: qty.multiplier || 1,
-        });
-
-        showToast('商品を追加しました！');
-        ocrController.reset();
-        btnAdd.disabled = true;
-        updateBadge();
-    });
-
-    // リセット
-    btnReset.addEventListener('click', () => {
-        if (ocrController) ocrController.reset();
-    });
-
-    // 手入力
-    btnManual.addEventListener('click', () => {
-        onNavigate('edit', { isNew: true });
-    });
-
-    // リスト
-    btnList.addEventListener('click', () => {
-        onNavigate('list');
-    });
-
-    // クリーンアップ関数を返す
-    return () => {
-        unsubStore();
+    // 価格チップ
+    if (priceCandidates.length > 0) {
+      renderChips(priceChips, priceCandidates, 'price', lockedPrice, (c) => {
         if (ocrController) {
-            ocrController.stop();
-            ocrController = null;
+          if (lockedPrice && lockedPrice.value === c.value) {
+            ocrController.unlockPrice();
+          } else {
+            ocrController.lockPrice(c);
+          }
         }
-        stopCamera();
-    };
+      });
+    } else if (!lockedPrice) {
+      priceChips.innerHTML = '<span class="scan-view__empty">候補なし — 手入力をお試しください</span>';
+    }
+
+    // 容量チップ
+    if (quantityCandidates.length > 0) {
+      renderChips(quantityChips, quantityCandidates, 'quantity', lockedQuantity, (c) => {
+        if (ocrController) {
+          if (lockedQuantity && lockedQuantity.value === c.value) {
+            ocrController.unlockQuantity();
+          } else {
+            ocrController.lockQuantity(c);
+          }
+        }
+      });
+    } else if (!lockedQuantity) {
+      quantityChips.innerHTML = '<span class="scan-view__empty">候補なし — 手入力をお試しください</span>';
+    }
+
+    // 単価候補
+    if (unitPriceCandidates && unitPriceCandidates.length > 0) {
+      unitPriceSection.style.display = '';
+      unitPriceChips.innerHTML = unitPriceCandidates.map(c =>
+        `<span class="chip chip--unitPrice">${c.label}</span>`
+      ).join('');
+    } else {
+      unitPriceSection.style.display = 'none';
+    }
+
+    // ロック解除ボタン表示
+    unlockPrice.style.display = lockedPrice ? '' : 'none';
+    unlockQuantity.style.display = lockedQuantity ? '' : 'none';
+
+    // 追加ボタン有効化
+    btnAdd.disabled = !(lockedPrice && lockedQuantity);
+  }
+
+  // ロック解除
+  unlockPrice.addEventListener('click', () => {
+    if (ocrController) ocrController.unlockPrice();
+  });
+  unlockQuantity.addEventListener('click', () => {
+    if (ocrController) ocrController.unlockQuantity();
+  });
+
+  // 追加
+  btnAdd.addEventListener('click', () => {
+    if (!ocrController || !ocrController.isBothLocked) return;
+    const price = ocrController.lockedPrice;
+    const qty = ocrController.lockedQuantity;
+
+    store.addProduct({
+      name: `商品${store.products.length + 1}`,
+      price: price.value,
+      taxType: price.taxType || 'unknown',
+      quantityValue: qty.value,
+      quantityUnit: qty.unit,
+      category: qty.category,
+      countUnitType: qty.countUnitType || null,
+      multiplier: qty.multiplier || 1,
+    });
+
+    showToast('商品を追加しました！');
+    ocrController.reset();
+    btnAdd.disabled = true;
+    updateBadge();
+  });
+
+  // リセット
+  btnReset.addEventListener('click', () => {
+    if (ocrController) ocrController.reset();
+  });
+
+  // 手入力
+  btnManual.addEventListener('click', () => {
+    onNavigate('edit', { isNew: true });
+  });
+
+  // リスト
+  btnList.addEventListener('click', () => {
+    onNavigate('list');
+  });
+
+  // クリーンアップ関数を返す
+  return () => {
+    unsubStore();
+    if (ocrController) {
+      ocrController.stop();
+      ocrController = null;
+    }
+    stopCamera();
+  };
 }
 
 async function startCamera(video) {
-    const constraints = {
-        video: {
-            facingMode: 'environment',
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-        }
-    };
-    videoStream = await navigator.mediaDevices.getUserMedia(constraints);
-    video.srcObject = videoStream;
-    await video.play();
+  const constraints = {
+    video: {
+      facingMode: 'environment',
+      width: { ideal: 1280 },
+      height: { ideal: 720 },
+    }
+  };
+  videoStream = await navigator.mediaDevices.getUserMedia(constraints);
+  video.srcObject = videoStream;
+  await video.play();
 }
 
 function stopCamera() {
-    if (videoStream) {
-        videoStream.getTracks().forEach(t => t.stop());
-        videoStream = null;
-    }
+  if (videoStream) {
+    videoStream.getTracks().forEach(t => t.stop());
+    videoStream = null;
+  }
 }
 
 function calcROI(video) {
-    const vw = video.videoWidth;
-    const vh = video.videoHeight;
-    const roiW = vw * 0.90;
-    const roiH = vh * 0.35;
-    return {
-        x: (vw - roiW) / 2,
-        y: (vh - roiH) / 2,
-        width: roiW,
-        height: roiH,
-    };
+  const vw = video.videoWidth;
+  const vh = video.videoHeight;
+  const roiW = vw * 0.90;
+  const roiH = vh * 0.35;
+  return {
+    x: (vw - roiW) / 2,
+    y: (vh - roiH) / 2,
+    width: roiW,
+    height: roiH,
+  };
 }

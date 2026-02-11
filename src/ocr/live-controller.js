@@ -52,7 +52,7 @@ export class LiveOCRController {
             this._startTimer();
         } catch (err) {
             console.error('OCR init error:', err);
-            this._setStatus('error');
+            this._setStatus('error', err.message || String(err));
         }
     }
 
@@ -217,11 +217,11 @@ export class LiveOCRController {
         }
     }
 
-    _setStatus(status) {
-        if (this._status === status) return;
+    _setStatus(status, errorDetail) {
+        if (this._status === status && !errorDetail) return;
         this._status = status;
         if (this._onStatusChange) {
-            this._onStatusChange(status);
+            this._onStatusChange(status, errorDetail);
         }
     }
 }

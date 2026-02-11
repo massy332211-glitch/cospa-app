@@ -1,5 +1,5 @@
 // Service Worker for コスパ比較アプリ
-const CACHE_NAME = 'cospa-v1';
+const CACHE_NAME = 'cospa-v2';
 const ASSETS = [
     './',
     './index.html',
