@@ -4,6 +4,8 @@
  * ※ Tesseract.js は index.html の <script> タグでグローバルに読み込み済み
  */
 
+import { store } from '../core/store.js';
+
 let worker = null;
 let isInitializing = false;
 let initPromise = null;
@@ -12,19 +14,53 @@ let initPromise = null;
  * Tesseract Worker の初期化
  */
 export async function initOCR(onProgress) {
-    if (worker) return worker;
-    if (isInitializing) return initPromise;
+    // 初期化中ならPromiseを返す
+    if (!worker && isInitializing) return initPromise;
 
-    isInitializing = true;
-    initPromise = _createWorker(onProgress);
-    try {
-        worker = await initPromise;
-        return worker;
-    } catch (err) {
-        isInitializing = false;
-        initPromise = null;
-        throw err;
+    // ワーカー作成
+    if (!worker) {
+        isInitializing = true;
+        initPromise = _createWorker(onProgress);
+        try {
+            worker = await initPromise;
+        } catch (err) {
+            isInitializing = false;
+            initPromise = null;
+            throw err;
+        }
     }
+
+    // 設定からホワイトリスト生成（毎回更新）
+    const { currency, language } = store.settings;
+    let whitelist = '0123456789.,/+-:()（）% ';
+
+    // 通貨記号
+    if (currency === 'USD') whitelist += '$＄¢';
+    else if (currency === 'EUR') whitelist += '€';
+    else if (currency === 'GBP') whitelist += '£';
+    else if (currency === 'KRW') whitelist += '₩';
+    else if (currency === 'CNY') whitelist += '¥￥元';
+    else whitelist += '¥￥円'; // JPY
+
+    // 単位記号
+    whitelist += 'gGkKmMlLpPcCxX×';
+
+    // 言語別文字
+    if (language === 'ja') {
+        whitelist += '個本入袋本体税込抜あたり';
+    } else {
+        whitelist += 'Abcdefghijklmnopqrstuvwxyz'; // 英語などの場合はアルファベット
+    }
+
+    // スペース追加
+    whitelist += ' ';
+
+    await worker.setParameters({
+        tessedit_char_whitelist: whitelist,
+        tessedit_pageseg_mode: Tesseract.PSM.SPARSE_TEXT,
+    });
+
+    return worker;
 }
 
 async function _createWorker(onProgress) {
@@ -33,19 +69,13 @@ async function _createWorker(onProgress) {
         throw new Error('Tesseract.js が読み込まれていません。ネットワーク接続を確認してください。');
     }
 
-    // 数字・英語のみ
+    // 数字・英語のみ (パラメータはinitOCRで設定されるのでここでは最小限)
     const w = await Tesseract.createWorker('eng', 1, {
         logger: (info) => {
             if (onProgress && info.progress != null) {
                 onProgress(info);
             }
         },
-    });
-
-    // 数字・記号中心の認識に最適化
-    await w.setParameters({
-        tessedit_char_whitelist: '0123456789.,¥円gGkKmMlLpPcCxX×個本入袋本体税込抜あたりAbcdefghijklmnopqrstuvwxyz/ ',
-        tessedit_pageseg_mode: Tesseract.PSM.SPARSE_TEXT, // 疎なテキスト（価格表など）に適したモード
     });
 
     return w;

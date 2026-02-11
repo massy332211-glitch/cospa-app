@@ -35,7 +35,9 @@ export function renderScanView(container, { onNavigate }) {
           <span class="scan-view__status-dot"></span>
           <span id="status-text">カメラを起動中…</span>
         </div>
-        <div class="scan-view__debug" id="debug-text"></div>
+        <button class="scan-view__settings-btn" id="btn-settings">
+          ⚙️
+        </button>
         <div class="scan-view__camera-error" id="camera-error" style="display:none">
           <div class="scan-view__camera-error-icon">📷</div>
           <p>カメラを起動できません</p>
@@ -163,16 +165,13 @@ export function renderScanView(container, { onNavigate }) {
     quantityChips.innerHTML = '<span class="scan-view__empty">手入力で商品を追加してください</span>';
   });
 
+  // 設定画面へ
+  document.getElementById('btn-settings').addEventListener('click', () => {
+    onNavigate('settings');
+  });
+
   function updateCandidatesUI(data) {
-    const debugText = document.getElementById('debug-text');
-    const { priceCandidates, quantityCandidates, unitPriceCandidates, lockedPrice, lockedQuantity, rawText } = data;
-
-    // デバッグ表示
-    if (debugText && rawText) {
-      debugText.textContent = `OCR: ${rawText.replace(/\n/g, ' ').substring(0, 50)}${rawText.length > 50 ? '...' : ''}`;
-    }
-
-
+    const { priceCandidates, quantityCandidates, unitPriceCandidates, lockedPrice, lockedQuantity } = data;
 
     // 価格チップ
     if (priceCandidates.length > 0) {

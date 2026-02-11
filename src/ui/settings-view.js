@@ -5,9 +5,9 @@ import { store } from '../core/store.js';
 import { showToast } from './components/toast.js';
 
 export function renderSettingsView(container, { onNavigate }) {
-    const settings = store.settings;
+  const settings = store.settings;
 
-    container.innerHTML = `
+  container.innerHTML = `
     <div class="settings-view">
       <div class="settings-view__header">
         <button class="btn btn--back" id="btn-back">
@@ -63,6 +63,44 @@ export function renderSettingsView(container, { onNavigate }) {
         </div>
 
         <div class="settings-group">
+          <h2 class="settings-group__title">地域・言語設定</h2>
+          
+          <div class="settings-item">
+            <div class="settings-item__info">
+              <span class="settings-item__label">表示言語</span>
+              <span class="settings-item__desc">アプリの表示言語を選択</span>
+            </div>
+            <select class="form-select" id="setting-language">
+              <option value="ja" ${settings.language === 'ja' ? 'selected' : ''}>日本語</option>
+              <option value="en" ${settings.language === 'en' ? 'selected' : ''}>English</option>
+            </select>
+          </div>
+
+          <div class="settings-item">
+            <div class="settings-item__info">
+              <span class="settings-item__label">通貨</span>
+              <span class="settings-item__desc">価格表示に使用する通貨</span>
+            </div>
+            <select class="form-select" id="setting-currency">
+              <option value="JPY" ${settings.currency === 'JPY' ? 'selected' : ''}>JPY (¥)</option>
+              <option value="USD" ${settings.currency === 'USD' ? 'selected' : ''}>USD ($)</option>
+              <option value="EUR" ${settings.currency === 'EUR' ? 'selected' : ''}>EUR (€)</option>
+              <option value="GBP" ${settings.currency === 'GBP' ? 'selected' : ''}>GBP (£)</option>
+              <option value="KRW" ${settings.currency === 'KRW' ? 'selected' : ''}>KRW (₩)</option>
+              <option value="CNY" ${settings.currency === 'CNY' ? 'selected' : ''}>CNY (¥)</option>
+            </select>
+          </div>
+
+          <div class="settings-item">
+            <div class="settings-item__info">
+              <span class="settings-item__label">消費税率 (%)</span>
+              <span class="settings-item__desc">税抜価格の計算に使用</span>
+            </div>
+            <input type="number" class="form-input form-input--small" id="setting-tax-rate" value="${settings.taxRate}" min="0" max="100">
+          </div>
+        </div>
+
+        <div class="settings-group">
           <h2 class="settings-group__title">基準量（固定）</h2>
           <div class="settings-item">
             <div class="settings-item__info">
@@ -75,19 +113,37 @@ export function renderSettingsView(container, { onNavigate }) {
     </div>
   `;
 
-    // イベント
-    document.getElementById('btn-back').addEventListener('click', () => onNavigate('scan'));
+  // イベント
+  document.getElementById('btn-back').addEventListener('click', () => onNavigate('scan'));
 
-    document.getElementById('setting-mode').addEventListener('change', (e) => {
-        store.updateSettings({ displayMode: e.target.value });
-        showToast('表示モードを変更しました');
-    });
+  document.getElementById('setting-mode').addEventListener('change', (e) => {
+    store.updateSettings({ displayMode: e.target.value });
+    showToast('表示モードを変更しました');
+  });
 
-    document.getElementById('setting-tax').addEventListener('change', (e) => {
-        store.updateSettings({ taxIncludedPriority: e.target.checked });
-    });
+  document.getElementById('setting-tax').addEventListener('change', (e) => {
+    store.updateSettings({ taxIncludedPriority: e.target.checked });
+  });
 
-    document.getElementById('setting-unitprice').addEventListener('change', (e) => {
-        store.updateSettings({ unitPricePriority: e.target.checked });
-    });
+  document.getElementById('setting-unitprice').addEventListener('change', (e) => {
+    store.updateSettings({ unitPricePriority: e.target.checked });
+  });
+
+  document.getElementById('setting-language').addEventListener('change', (e) => {
+    store.updateSettings({ language: e.target.value });
+    showToast('言語を変更しました（一部は再起動後に反映されます）');
+  });
+
+  document.getElementById('setting-currency').addEventListener('change', (e) => {
+    store.updateSettings({ currency: e.target.value });
+    showToast('通貨を変更しました');
+  });
+
+  document.getElementById('setting-tax-rate').addEventListener('change', (e) => {
+    let val = parseFloat(e.target.value);
+    if (isNaN(val) || val < 0) val = 0;
+    if (val > 100) val = 100;
+    store.updateSettings({ taxRate: val });
+    showToast('消費税率を変更しました');
+  });
 }

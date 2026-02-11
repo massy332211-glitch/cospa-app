@@ -12,6 +12,9 @@ class Store {
             displayMode: 'A',        // 'A' or 'B'
             taxIncludedPriority: true,
             unitPricePriority: true,
+            language: 'ja',
+            currency: 'JPY',
+            taxRate: 10,
         };
         this._loadSettings();
     }

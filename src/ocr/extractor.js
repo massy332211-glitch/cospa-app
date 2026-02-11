@@ -3,6 +3,7 @@
  * OCRテキストから価格・容量・単価候補を抽出する
  */
 import { zenToHan, parseNumber, normalizeUnit, parseMultiplication } from '../core/units.js';
+import { store } from '../core/store.js';
 
 /**
  * 価格候補を抽出
@@ -37,24 +38,52 @@ export function extractPriceCandidates(rawText) {
         }
     }
 
+    // 設定から通貨情報を取得
+    const { currency } = store.settings;
+    let sym = '[¥￥]';
+    let unit = '円';
+
+    switch (currency) {
+        case 'USD': sym = '[$＄¢]'; unit = '(?:dollars?|cent|[¢])?'; break;
+        case 'EUR': sym = '[€]'; unit = '(?:euros?)?'; break;
+        case 'GBP': sym = '[£]'; unit = '(?:pounds?)?'; break;
+        case 'KRW': sym = '[₩]'; unit = '(?:won)?'; break;
+        case 'CNY': sym = '[¥￥元]'; unit = '元'; break;
+        case 'JPY': default: sym = '[¥￥]'; unit = '円'; break;
+    }
+
     // 価格候補パターン
     const pricePatterns = [
         // 税込 + 価格
-        { regex: /(税込|税込み)\s*[¥￥]?\s*(\d[\d,.]*)\s*円?/gi, taxType: 'included' },
+        { regex: new RegExp(`(税込|税込み)\\s*${sym}?\\s*(\\d[\\d,.]*)\\s*${unit}?`, 'gi'), taxType: 'included' },
         // 価格 + 税込
-        { regex: /[¥￥]?\s*(\d[\d,.]*)\s*円?\s*[\(（]?\s*(税込|税込み)/gi, taxType: 'included', valGroup: 1 },
+        { regex: new RegExp(`${sym}?\\s*(\\d[\\d,.]*)\\s*${unit}?\\s*[\\(（]?\\s*(税込|税込み)`, 'gi'), taxType: 'included', valGroup: 1 },
         // 本体 + 価格
-        { regex: /(本体|税抜|税別)\s*[¥￥]?\s*(\d[\d,.]*)\s*円?/gi, taxType: 'body' },
-        // ¥付き
-        { regex: /[¥￥]\s*(\d[\d,.]*)/g, taxType: 'unknown', valGroup: 1 },
-        // 数値+円
-        { regex: /(\d[\d,.]*)\s*円/g, taxType: 'unknown', valGroup: 1 },
+        { regex: new RegExp(`(本体|税抜|税別)\\s*${sym}?\\s*(\\d[\\d,.]*)\\s*${unit}?`, 'gi'), taxType: 'body' },
+        // 通貨記号付き
+        { regex: new RegExp(`${sym}\\s*(\\d[\\d,.]*)`, 'g'), taxType: 'unknown', valGroup: 1 },
+        // 数値+単位
+        { regex: new RegExp(`(\\d[\\d,.]*)\\s*${unit}`, 'g'), taxType: 'unknown', valGroup: 1 },
+        // 通貨記号なし (3桁以上 または 小数点あり)
+        // ※ 単位(g,ml等)が直後にないことを確認
+        { regex: /(?<![\d,.])([1-9]\d{2,}|[1-9]\d*\.\d+)(?![\d,.])(?!\s*(g|kg|ml|mL|L|ℓ|cc|個|枚|本|袋|パック|p|pack|当り|あたり|当たり|\/|／|:|：|-))/gi, taxType: 'unknown', valGroup: 1, isWeak: true },
     ];
+
+    // JPYの場合の特例: 「円」の誤認識パターンを追加
+    if (currency === 'JPY') {
+        const weakSymPattern = '円|yen|en|Yen|En|m|M|w|W|F|A|H';
+        pricePatterns.push({
+            regex: new RegExp(`(\\d[\\d,.]*)\\s*(${weakSymPattern})(?!\\s*(g|kg|ml|L|cc|個|枚|本|袋|p))`, 'gi'),
+            taxType: 'unknown',
+            valGroup: 1,
+            isWeak: true // 誤認識前提なのでWeak扱いだが、後で加点する
+        });
+    }
 
     const seen = new Set();
     const unitPriceValues = new Set(unitPriceCandidates.map(c => c.value));
 
-    for (const { regex, taxType, valGroup } of pricePatterns) {
+    for (const { regex, taxType, valGroup, isWeak } of pricePatterns) {
         let m;
         while ((m = regex.exec(text)) !== null) {
             const valStr = m[valGroup || 2];
@@ -62,6 +91,14 @@ export function extractPriceCandidates(rawText) {
             if (!val || val <= 0) continue;
             if (unitPriceValues.has(val)) continue; // 単価候補は除外
             if (seen.has(val)) continue;
+
+            // 除外ロジック
+            if (/^\d{8}$|^\d{13}$/.test(valStr)) continue; // JANコード(8,13桁)
+            // 電話番号や日付の一部と推測される場合は除外
+            // (正規表現で弾いているが念のため)
+            const fullMatch = m[0];
+            if (fullMatch.includes('-') || fullMatch.includes('/')) continue;
+
 
             // 周辺に単価キーワードがないかチェック
             const surroundStart = Math.max(0, m.index - 15);
@@ -80,14 +117,40 @@ export function extractPriceCandidates(rawText) {
             seen.add(val);
 
             let baseScore = 0;
-            if (taxType === 'included') baseScore = 8;
-            else if (taxType === 'body') baseScore = 4;
-            if (/円/.test(m[0])) baseScore += 3;
+            if (isWeak) {
+                // 通貨記号なし数値は低スコアからスタート
+                baseScore = 1;
+            } else {
+                if (taxType === 'included') baseScore = 8;
+                else if (taxType === 'body') baseScore = 4;
+
+                // 通貨記号や単位が含まれていれば加点
+                if (new RegExp(sym).test(m[0])) baseScore += 3;
+                else if (unit && new RegExp(unit).test(m[0])) baseScore += 3;
+            }
+
+            // JPY特例: 誤認識パターンでも加点して上位に表示させる
+            if (currency === 'JPY' && /[円yenmMFWAH]/i.test(m[0])) {
+                baseScore += 2;
+            }
+
+            // 表示用通貨記号（簡易的にsymの最初の1文字を採用、ただし[]は除く）
+            const displaySym = sym.replace(/[\[\]]/g, '').charAt(0);
+
+            // 税表記
+            let taxLabel = '';
+            if (store.settings.language === 'en') {
+                if (taxType === 'included') taxLabel = ' (incl.)';
+                else if (taxType === 'body') taxLabel = ' (excl.)';
+            } else {
+                if (taxType === 'included') taxLabel = '(税込)';
+                else if (taxType === 'body') taxLabel = '(本体)';
+            }
 
             candidates.push({
                 value: val,
                 taxType,
-                label: `¥${val.toLocaleString()}${taxType === 'included' ? '(税込)' : taxType === 'body' ? '(本体)' : ''}`,
+                label: `${displaySym}${val.toLocaleString()}${taxLabel}`,
                 isUnitPrice: false,
                 score: baseScore,
             });
