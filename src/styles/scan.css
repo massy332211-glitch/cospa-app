@@ -1,0 +1,254 @@
+/* ==========================================
+   スキャン画面スタイル
+   ========================================== */
+
+.scan-view {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    overflow: hidden;
+}
+
+.scan-view__camera-area {
+    position: relative;
+    flex: 1;
+    min-height: 35vh;
+    background: #000;
+    overflow: hidden;
+}
+
+.scan-view__camera-area video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* ROI ガイド枠 */
+.scan-view__roi {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90%;
+    height: 35%;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.scan-view__roi-border {
+    width: 100%;
+    height: 100%;
+    border: 2px dashed rgba(255, 255, 255, 0.6);
+    border-radius: var(--radius-lg);
+    position: relative;
+    animation: roi-pulse 3s ease-in-out infinite;
+}
+
+.scan-view__roi-border::before {
+    content: '📷 値札をこの枠に合わせてください';
+    position: absolute;
+    top: -28px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.8);
+    white-space: nowrap;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+}
+
+/* 四隅のコーナーマーク */
+.scan-view__roi-border::after {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border: 3px solid var(--color-accent);
+    border-radius: var(--radius-lg);
+    clip-path: polygon(0 0, 30px 0, 30px 3px, 3px 3px, 3px 30px, 0 30px,
+            0 calc(100% - 30px), 3px calc(100% - 30px), 3px calc(100% - 3px), 30px calc(100% - 3px), 30px 100%, 0 100%,
+            100% 100%, calc(100% - 30px) 100%, calc(100% - 30px) calc(100% - 3px), calc(100% - 3px) calc(100% - 3px), calc(100% - 3px) calc(100% - 30px), 100% calc(100% - 30px),
+            100% 30px, calc(100% - 3px) 30px, calc(100% - 3px) 3px, calc(100% - 30px) 3px, calc(100% - 30px) 0, 100% 0);
+}
+
+@keyframes roi-pulse {
+
+    0%,
+    100% {
+        border-color: rgba(255, 255, 255, 0.5);
+    }
+
+    50% {
+        border-color: rgba(34, 211, 238, 0.8);
+    }
+}
+
+/* 暗い外枠 (ROI外を暗くする) */
+.scan-view__camera-area::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(to bottom,
+            rgba(0, 0, 0, 0.5) 0%,
+            rgba(0, 0, 0, 0.1) 30%,
+            rgba(0, 0, 0, 0.1) 70%,
+            rgba(0, 0, 0, 0.5) 100%);
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* OCRステータス */
+.scan-view__status {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 16px;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.9);
+    z-index: 3;
+    white-space: nowrap;
+}
+
+.scan-view__status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--color-text-muted);
+    flex-shrink: 0;
+}
+
+.scan-view__status-dot--scanning {
+    background: var(--color-success);
+    animation: dot-blink 1s infinite;
+}
+
+.scan-view__status-dot--initializing {
+    background: var(--color-warning);
+    animation: dot-blink 0.5s infinite;
+}
+
+.scan-view__status-dot--unstable {
+    background: var(--color-warning);
+}
+
+.scan-view__status-dot--locked {
+    background: var(--color-accent);
+}
+
+.scan-view__status-dot--error {
+    background: var(--color-danger);
+}
+
+@keyframes dot-blink {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.3;
+    }
+}
+
+/* 候補パネル */
+.scan-view__panel {
+    background: var(--color-bg-panel);
+    backdrop-filter: blur(16px);
+    border-top: 1px solid var(--color-border);
+    padding: 16px;
+    overflow-y: auto;
+    max-height: 55vh;
+    flex-shrink: 0;
+}
+
+.scan-view__section {
+    margin-bottom: 14px;
+}
+
+.scan-view__section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.scan-view__section-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.scan-view__unlock-btn {
+    background: none;
+    border: 1px solid var(--color-border);
+    color: var(--color-text-muted);
+    font-size: 0.7rem;
+    padding: 3px 10px;
+    border-radius: var(--radius-full);
+    cursor: pointer;
+    font-family: var(--font-family);
+    transition: all var(--transition-fast);
+}
+
+.scan-view__unlock-btn:hover {
+    border-color: var(--color-danger);
+    color: var(--color-danger);
+}
+
+.scan-view__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.scan-view__empty {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+    font-style: italic;
+    padding: 4px 0;
+}
+
+.scan-view__actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.scan-view__actions .btn--primary {
+    flex: 1;
+}
+
+.scan-view__nav {
+    margin-top: 12px;
+}
+
+.scan-view__nav .btn {
+    width: 100%;
+    position: relative;
+}
+
+.scan-view__badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    background: var(--color-danger);
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 700;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 6px rgba(248, 113, 113, 0.4);
+}

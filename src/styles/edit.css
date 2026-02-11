@@ -1,0 +1,111 @@
+/* ==========================================
+   編集画面スタイル
+   ========================================== */
+
+.edit-view {
+    min-height: 100dvh;
+    background: var(--color-bg);
+}
+
+.edit-view__header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--color-bg-secondary);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.edit-view__title {
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.edit-view__form {
+    padding: 20px 16px;
+}
+
+.edit-view__actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 24px;
+    padding-bottom: 40px;
+}
+
+.edit-view__actions .btn--primary {
+    width: 100%;
+}
+
+.edit-view__actions .btn--secondary {
+    width: 100%;
+}
+
+/* ==========================================
+   設定画面スタイル
+   ========================================== */
+
+.settings-view {
+    min-height: 100dvh;
+    background: var(--color-bg);
+}
+
+.settings-view__header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--color-bg-secondary);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.settings-view__title {
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.settings-view__body {
+    padding: 16px;
+}
+
+.settings-group {
+    margin-bottom: 24px;
+}
+
+.settings-group__title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 12px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--color-border-light);
+}
+
+.settings-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--color-border-light);
+}
+
+.settings-item__info {
+    flex: 1;
+    margin-right: 16px;
+}
+
+.settings-item__label {
+    display: block;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--color-text);
+}
+
+.settings-item__desc {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    margin-top: 2px;
+}

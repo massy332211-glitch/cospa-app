@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="値札をカメラで読み取り、商品のコスパを瞬時に比較。スーパーでのお買い物をもっと賢く。">
+    <meta name="theme-color" content="#0a0e1a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="コスパ比較">
+
+    <title>コスパ比較 - 値札OCR</title>
+
+    <link rel="manifest" href="./manifest.json">
+    <link rel="icon" type="image/svg+xml" href="./icons/icon-192.svg">
+    <link rel="apple-touch-icon" href="./icons/icon-192.svg">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="./src/index.css">
+    <link rel="stylesheet" href="./src/styles/scan.css">
+    <link rel="stylesheet" href="./src/styles/list.css">
+    <link rel="stylesheet" href="./src/styles/edit.css">
+</head>
+
+<body>
+    <div id="app">
+        <!-- 初期ローディング -->
+        <div
+            style="display:flex;align-items:center;justify-content:center;height:100dvh;flex-direction:column;gap:16px">
+            <div style="font-size:2.5rem;animation:float 2s ease-in-out infinite">🏷️</div>
+            <div style="color:#94a3b8;font-size:0.9rem">コスパ比較を起動中…</div>
+        </div>
+    </div>
+
+    <!-- Main Script (ES module) -->
+    <script type="module" src="./src/main.js"></script>
+</body>
+
+</html>
