@@ -16,6 +16,7 @@ export class LiveOCRController {
         this._isProcessing = false;
         this._prevCanvas = null;
         this._scorer = new CandidateScorer();
+        this._unstableCount = 0; // 不安定フレーム連続カウント
 
         // ロック状態
         this._lockedPrice = null;
@@ -143,13 +144,20 @@ export class LiveOCRController {
         // 安定検知用の現フレームをキャプチャ
         const currentCanvas = this._captureROI();
 
-        // 安定検知
+        // 安定検知（閾値を緩めに設定、かつ3回連続不安定でも強制実行）
         if (this._prevCanvas) {
-            const stable = isFrameStable(this._prevCanvas, currentCanvas);
+            const stable = isFrameStable(this._prevCanvas, currentCanvas, 0.30);
             if (!stable) {
-                this._setStatus('unstable');
-                this._prevCanvas = currentCanvas;
-                return;
+                this._unstableCount++;
+                // 3回連続不安定でも強制的にOCR実行
+                if (this._unstableCount < 3) {
+                    this._setStatus('unstable');
+                    this._prevCanvas = currentCanvas;
+                    return;
+                }
+                this._unstableCount = 0;
+            } else {
+                this._unstableCount = 0;
             }
         }
         this._prevCanvas = currentCanvas;
