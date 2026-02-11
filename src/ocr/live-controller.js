@@ -141,19 +141,6 @@ export class LiveOCRController {
         if (!this._ocrReady || this._isProcessing) return;
         if (!this._video || this._video.readyState < 2) return;
 
-        // 安定検知用の現フレームをキャプチャ
-        const currentCanvas = this._captureROI();
-
-        // 安定検知（ほぼ無効：極端なブレのみスキップ）
-        if (this._prevCanvas) {
-            const stable = isFrameStable(this._prevCanvas, currentCanvas, 0.95);
-            if (!stable) {
-                this._prevCanvas = currentCanvas;
-                // それでもOCRは実行する（スキップしない）
-            }
-        }
-        this._prevCanvas = currentCanvas;
-
         // OCR実行
         this._isProcessing = true;
         this._setStatus('scanning');
