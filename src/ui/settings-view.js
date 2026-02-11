@@ -101,6 +101,21 @@ export function renderSettingsView(container, { onNavigate }) {
         </div>
 
         <div class="settings-group">
+          <h2 class="settings-group__title">スキャン設定</h2>
+          <div class="settings-item">
+            <div class="settings-item__info">
+              <span class="settings-item__label">スキャン間隔</span>
+              <span class="settings-item__desc">価格検出の頻度（短いと電池消費増）</span>
+            </div>
+            <select class="form-select" id="setting-scan-interval">
+              <option value="1000" ${settings.scanInterval === 1000 ? 'selected' : ''}>高速 (1秒)</option>
+              <option value="3000" ${settings.scanInterval === 3000 ? 'selected' : ''}>標準 (3秒)</option>
+              <option value="5000" ${settings.scanInterval === 5000 ? 'selected' : ''}>ゆっくり (5秒)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="settings-group">
           <h2 class="settings-group__title">基準量（固定）</h2>
           <div class="settings-item">
             <div class="settings-item__info">
@@ -145,5 +160,10 @@ export function renderSettingsView(container, { onNavigate }) {
     if (val > 100) val = 100;
     store.updateSettings({ taxRate: val });
     showToast('消費税率を変更しました');
+  });
+
+  document.getElementById('setting-scan-interval').addEventListener('change', (e) => {
+    store.updateSettings({ scanInterval: parseInt(e.target.value, 10) });
+    showToast('スキャン間隔を変更しました');
   });
 }

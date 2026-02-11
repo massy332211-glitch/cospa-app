@@ -4,9 +4,9 @@
  */
 import { initOCR, recognizeROI, isFrameStable } from './engine.js';
 import { extractPriceCandidates, extractQuantityCandidates } from './extractor.js';
+import { store } from '../core/store.js';
 import { CandidateScorer } from './scorer.js';
 
-const OCR_INTERVAL = 3000; // ms
 
 export class LiveOCRController {
     constructor() {
@@ -134,7 +134,8 @@ export class LiveOCRController {
     // ── 内部 ──
 
     _startTimer() {
-        this._timer = setInterval(() => this._tick(), OCR_INTERVAL);
+        const interval = store.settings.scanInterval || 3000;
+        this._timer = setInterval(() => this._tick(), interval);
     }
 
     async _tick() {

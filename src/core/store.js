@@ -15,6 +15,7 @@ class Store {
             language: 'ja',
             currency: 'JPY',
             taxRate: 10,
+            scanInterval: 3000,
         };
         this._loadSettings();
     }
