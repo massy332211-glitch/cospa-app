@@ -1,6 +1,7 @@
 /**
  * OCRエンジンラッパー
  * Tesseract.jsを使用してROI領域のOCRを実行
+ * ※ Tesseract.js は index.html の <script> タグでグローバルに読み込み済み
  */
 
 let worker = null;
@@ -19,14 +20,21 @@ export async function initOCR(onProgress) {
     try {
         worker = await initPromise;
         return worker;
+    } catch (err) {
+        console.error('OCR init failed:', err);
+        throw err;
     } finally {
         isInitializing = false;
     }
 }
 
 async function _createWorker(onProgress) {
-    const { createWorker } = await import('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.esm.min.js');
-    const w = await createWorker('eng+jpn', 1, {
+    // グローバルに読み込まれた Tesseract を使用
+    if (typeof Tesseract === 'undefined') {
+        throw new Error('Tesseract.js が読み込まれていません');
+    }
+
+    const w = await Tesseract.createWorker('eng+jpn', 1, {
         logger: (info) => {
             if (onProgress && info.progress != null) {
                 onProgress(info);
@@ -114,7 +122,7 @@ export function isFrameStable(prevCanvas, currCanvas, threshold = 0.05) {
             const diff = Math.abs(prevData[idx] - currData[idx])
                 + Math.abs(prevData[idx + 1] - currData[idx + 1])
                 + Math.abs(prevData[idx + 2] - currData[idx + 2]);
-            if (diff > 60) diffCount++; // ピクセル変化が大きい
+            if (diff > 60) diffCount++;
             totalSamples++;
         }
     }

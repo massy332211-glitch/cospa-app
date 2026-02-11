@@ -12,11 +12,11 @@ let videoStream = null;
 
 const STATUS_LABELS = {
     idle: '待機中',
-    initializing: 'OCRエンジンを読み込み中…',
-    scanning: '読み取り中…',
-    unstable: '手ブレ検知：安定するまで待機',
-    locked: '✅ ロック中',
-    error: 'エラーが発生しました',
+    initializing: 'OCRエンジンを読み込み中…（初回は時間がかかります）',
+    scanning: '🟢 読み取り中…',
+    unstable: '⏸️ 手ブレ検知：安定するまで待機',
+    locked: '✅ ロック中 — [追加]を押してください',
+    error: 'OCRの初期化に失敗しました',
 };
 
 /**
@@ -34,6 +34,11 @@ export function renderScanView(container, { onNavigate }) {
         <div class="scan-view__status" id="ocr-status">
           <span class="scan-view__status-dot"></span>
           <span id="status-text">カメラを起動中…</span>
+        </div>
+        <div class="scan-view__camera-error" id="camera-error" style="display:none">
+          <div class="scan-view__camera-error-icon">📷</div>
+          <p>カメラを起動できません</p>
+          <p class="scan-view__camera-error-sub">カメラへのアクセスを許可するか、<br>手入力で商品を追加してください</p>
         </div>
       </div>
 
@@ -91,6 +96,7 @@ export function renderScanView(container, { onNavigate }) {
     const video = document.getElementById('camera-video');
     const statusText = document.getElementById('status-text');
     const statusDot = container.querySelector('.scan-view__status-dot');
+    const cameraError = document.getElementById('camera-error');
     const priceChips = document.getElementById('price-chips');
     const quantityChips = document.getElementById('quantity-chips');
     const unitPriceSection = document.getElementById('unit-price-section');
@@ -118,6 +124,7 @@ export function renderScanView(container, { onNavigate }) {
 
     // カメラ起動
     startCamera(video).then(() => {
+        statusText.textContent = 'カメラ起動完了。OCRを初期化中…';
         const roi = calcROI(video);
         ocrController = new LiveOCRController();
         ocrController.start(video, roi, {
@@ -129,8 +136,12 @@ export function renderScanView(container, { onNavigate }) {
         });
     }).catch(err => {
         console.error('Camera error:', err);
-        statusText.textContent = 'カメラを起動できません';
+        // カメラ失敗でもアプリは使える（手入力で）
+        cameraError.style.display = 'flex';
+        statusText.textContent = 'カメラを使用できません — 手入力をご利用ください';
         statusDot.className = 'scan-view__status-dot scan-view__status-dot--error';
+        priceChips.innerHTML = '<span class="scan-view__empty">手入力で商品を追加してください</span>';
+        quantityChips.innerHTML = '<span class="scan-view__empty">手入力で商品を追加してください</span>';
     });
 
     function updateCandidatesUI(data) {
